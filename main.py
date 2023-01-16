@@ -19,6 +19,7 @@ app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 client = pymongo.MongoClient("mongodb://localhost:27017")
 db = client.youtube
 collection = db.chat_analytics
+collection_2 = db.chat_log
 
 # Get data from MongoDB
 data = list(collection.find().sort("setAmount", -1).limit(10))
@@ -30,8 +31,6 @@ for x in data:
     amount.append(tmp[2])
     lst1 = name
     lst2 = amount
-
-    # lst = [lst1,lst2]
     dict = {'Name': lst1, 'Total': lst2} 
     df = pd.DataFrame(dict) 
 
@@ -56,8 +55,60 @@ l1_p2 = lst1_p2
 l2_p2 = lst2_p2
 df2_p2= df_p2
 
-print(type(df2_p2))
-print(df2_p2)
+#group person
+# Get data from MongoDB
+data_p3 = list(collection_2.find())
+
+date_p3=[]
+name_p3=[]
+chat_p3=[]
+for x_p3 in data_p3:
+    tmp_p3 = list(x_p3.values())
+    date_p3.append(tmp_p3[1][0:10])
+    name_p3.append(tmp_p3[2])
+    chat_p3.append(tmp_p3[3])
+    lst = [date_p3,name_p3,chat_p3]
+    dict_p3 = {'Date': date_p3, 'Name': name_p3, 'Chat': chat_p3} 
+    df_p3 = pd.DataFrame(dict_p3)  
+    
+df2_p3 = df_p3.groupby(['Name'])['Name'].count().sort_values(ascending=False)
+dtl = df2_p3.to_dict()
+df_list_p3_k = dtl.keys()
+df_list_p3_v = dtl.values()
+
+list_k = list(df_list_p3_k)
+list_v = list(df_list_p3_v)
+dict_kv = {'Name': list_k, 'Total': list_v} 
+df_kv = pd.DataFrame(dict_kv)
+ 
+
+# print (list_k)
+# print (type(list_k))
+
+
+#group by date
+data_p4 = list(collection_2.find())
+date_p4=[]
+name_p4=[]
+chat_p4=[]
+for x_p4 in data_p4:
+    tmp_p4 = list(x_p4.values())
+    date_p4.append(tmp_p4[1][0:10])
+    name_p4.append(tmp_p4[2])
+    chat_p4.append(tmp_p4[3])
+    lst = [date_p4,name_p4,chat_p4]
+    dict_p4 = {'Date': date_p4, 'Name': name_p4, 'Chat': chat_p4} 
+    df_p4 = pd.DataFrame(dict_p4)  
+    
+df2_p4 = df_p4.groupby(['Date'])['Date'].count()
+dtl4 = df2_p4.to_dict()
+df_list_p4_k = dtl4.keys()
+df_list_p4_v = dtl4.values()
+
+list_k4 = list(df_list_p4_k)
+list_v4 = list(df_list_p4_v)
+dict_kv4 = {'Date': list_k4, 'Total': list_v4} 
+df_kv4 = pd.DataFrame(dict_kv4)
 
 #table1
 data_table = dash_table.DataTable(
@@ -76,13 +127,46 @@ data_table = dash_table.DataTable(
         page_action='none'
 )
 
-
-#table1
+#table2
 data_table_p2 = dash_table.DataTable(
     id='table-virtualization',
         data=df2_p2.to_dict('records'),
         columns=[
             {'name': i, 'id': i} for i in df2_p2.columns
+        ],
+        fixed_rows={ 'headers': True, 'data': 0 },
+        style_cell={
+            'textAlign':'center',
+            'whiteSpace': 'normal'
+        },
+        
+        virtualization=True,
+        page_action='none'
+)
+
+#table3
+data_table_p3 = dash_table.DataTable(
+    id='table-virtualization',
+        data=df_kv.to_dict('records'),
+        columns=[
+            {'name': i, 'id': i} for i in df_kv.columns
+        ],
+        fixed_rows={ 'headers': True, 'data': 0 },
+        style_cell={
+            'textAlign':'center',
+            'whiteSpace': 'normal'
+        },
+        
+        virtualization=True,
+        page_action='none'
+)
+
+#table4
+data_table_p4 = dash_table.DataTable(
+    id='table-virtualization',
+        data=df_kv4.to_dict('records'),
+        columns=[
+            {'name': i, 'id': i} for i in df_kv4.columns
         ],
         fixed_rows={ 'headers': True, 'data': 0 },
         style_cell={
@@ -131,10 +215,10 @@ sidebar = html.Div(
         html.P("กระแสความสนใจของผู้ที่ต้องการลงทุนหุ้น", className="lead"),
         dbc.Nav(
             [
-                dbc.NavLink("หุ้นที่นิยม 10 อันดับ", href="/", active="exact"),
-                dbc.NavLink("หุ้นที่ได้รับความสนใจ", href="/page-1", active="exact"),
-                dbc.NavLink("ผู้ที่สนใจเรื่องหุ้น", href="/page-2", active="exact"),
-                dbc.NavLink("ผู้ใช้งานที่เข้ามาบ่อยๆ ซ้ำๆ ", href="/page-3", active="exact"),
+                dbc.NavLink("หุ้นที่ที่ได้รับความสนใจ 10 อันดับ", href="/", active="exact"),
+                dbc.NavLink("หุ้นที่ได้รับความสนใจทั้งหมด", href="/page-1", active="exact"),
+                dbc.NavLink("ยอดผู้ชมใน 1 สัปดาห์", href="/page-2", active="exact"),
+                dbc.NavLink("ยอดผู้ชมตามการติดตาม", href="/page-3", active="exact"),
             ],
             vertical=True,
             pills=True,
@@ -152,7 +236,7 @@ app.layout = html.Div([dcc.Location(id="url"), sidebar, content])
 def render_page_content(pathname):
     if pathname == "/":
         return html.Div([
-                html.H3('หุ้นที่ได้รับความสนใจ 10 อันดับ'),
+                html.H3('หุ้นที่ที่ได้รับความสนใจ 10 อันดับ'),
                 #เรียกฟังก์ชั่นตาราง แสดง
                 #เรียก กราฟ แสดง
                 data_table,
@@ -170,14 +254,13 @@ def render_page_content(pathname):
             ])
     elif pathname == "/page-1":
          return html.Div([
-            html.H3('หุ้นที่ได้รับความสนใจ'),
+            html.H3('หุ้นที่ได้รับความสนใจทั้งหมด'),
             # dcc.Graph(figure=fig),
             data_table_p2,
             dcc.Graph(
                 figure={
                     'data': [
                         {'x': l1_p2, 'y': l2_p2, 'type': 'bar', 'name': 'SF'},
-                        # {'x': [1, 2, 3], 'y': [2, 4, 5], 'type': 'bar', 'name': u'Montréal'},
                     ],
                     'layout': {
                         'title': 'Dash Data Visualization'
@@ -187,12 +270,34 @@ def render_page_content(pathname):
         ])
     elif pathname == "/page-2":
         return html.Div([
-            html.H3('ผู้ที่สนใจเรื่องหุ้น'),
+            html.H3('ยอดผู้ชมใน 1 สัปดาห์'),
+            data_table_p4,
+            dcc.Graph(
+                figure={
+                    'data': [
+                        {'x': list_k4, 'y': list_v4, 'type': 'bar', 'name': 'Montréal'},
+                    ],
+                    'layout': {
+                        'title': 'Dash Data Visualization'
+                    }
+                }
+            )
             #app.layout 
         ])
     elif pathname == "/page-3":
         return html.Div([
-            html.H3('ผู้ใช้งานที่เข้ามาบ่อยๆ ซ้ำๆ'),
+            html.H3('ยอดผู้ชมตามการติดตาม'),
+            data_table_p3,
+            dcc.Graph(
+                figure={
+                    'data': [
+                        {'x': list_k, 'y': list_v, 'type': 'bar', 'name': 'Montréal'},
+                    ],
+                    'layout': {
+                        'title': 'Dash Data Visualization'
+                    }
+                }
+            )
             #app.layout 
         ])
     # If the user tries to reach a different page, return a 404 message
